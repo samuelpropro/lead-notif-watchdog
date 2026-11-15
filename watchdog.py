@@ -72,14 +72,14 @@ def check(client, tok, now):
         missing += 1
         body = fill(client["template"], x)
         actions = fill(client["actions"], x)
-        log(name, "MISSING -> resend", x[client["name_col"]])
+        log(name, "missing -> resend")
         if DRY:
             continue
         r = requests.post(client["topic"], data=body.encode(), params={"actions": actions}, timeout=30,
                           headers={"Title": client["title"], "Priority": "high", "Tags": client["tags"]})
         log(name, "ntfy", r.status_code)
         if not r.ok:
-            raise RuntimeError(f"{name}: ntfy {r.status_code} {r.text[:200]}")
+            raise RuntimeError(f"ntfy {r.status_code}")
     log(name, "ok" if not missing else f"{missing} resent")
 
 
@@ -88,12 +88,14 @@ def main():
     tok = token()
     now = dt.datetime.now(PARIS)
     errors = []
-    for c in clients:
+    for i, c in enumerate(clients):
+        tag = f"client{i + 1}"  # public logs: no client names
+        c = {**c, "name": tag}
         try:
             check(c, tok, now)
         except Exception as e:  # one client failing must not block the others
-            errors.append(f"{c['name']}: {e}")
-            log("ERROR", c["name"], e)
+            errors.append(tag)
+            log("ERROR", tag, type(e).__name__)
     if errors:
         sys.exit(1)  # red run -> GitHub emails the owner
 
